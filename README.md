@@ -88,6 +88,7 @@ Performed analysis includes:
 
 * Number of samples: 47837 and classes: 8.
 * Class imbalance: The dataset is moderately imbalanced, with Hardware and HR Support dominating, motivating the use of macro-averaged evaluation metrics.
+
 | Topic Group           | Sample Count |
 | --------------------- | ------------ |
 | Hardware              | 13,617       |
@@ -100,6 +101,7 @@ Performed analysis includes:
 | Administrative rights | 1,760        |
 
 * Text length distribution: Most tickets are short to medium length, but a long tail of very large tickets exists, which can introduce noise and ambiguity for bag-of-words models.
+
 | Statistic       | Value             |
 | --------------- | ----------------- |
 | Count           | 47,837            |
