@@ -252,7 +252,7 @@ An **ablation study** is included to explicitly measure retrieval impact.
 
 ---
 
-## Phase 4 — Error Analysis (Non-Negotiable)
+## Phase 4 — Error Analysis
 
 This phase focuses on understanding model behavior rather than improving metrics.
 
