@@ -218,7 +218,7 @@ Linear SVM performed better among the two models:
 
 ## Phase 2 — Neural Model Training (WIP)
 
-**Objective:** Evaluate whether a learned neural text encoder improves over TF-IDF baselines and analyze the effect of training duration vs early stopping on class-wise recall and confusion patterns.
+**Objective 1:** Evaluate whether a learned neural text encoder improves over TF-IDF baselines and analyze the effect of training duration vs early stopping on class-wise recall and confusion patterns.
 
 - Notebook: "notebooks/03_neural_training.ipynb"
 
@@ -249,7 +249,7 @@ A lightweight neural classifier was trained from scratch:
 **Two training regimes were compared:**
 
 * Fixed training (50 epochs, no early stopping)
-* Early stopping (triggered at epoch 33 based on validation Macro-F1)
+* Early stopping (triggered at epoch 31 based on validation Macro-F1)
 
 ### Evaluation Methodology
 
