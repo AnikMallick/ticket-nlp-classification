@@ -10,5 +10,7 @@ class Sample:
 class Batch:
     input_ids: torch.Tensor # shape: [B, T] batch size, max token_ids for the samples in the batch
     labels: torch.Tensor # shape: [B]
-    attention_masks: torch.Tensor # shape: [B, T]
+    attention_masks: torch.Tensor # shape: [B, T]  
     
+    def __len__(self) -> int:
+        return self.input_ids.shape[0]

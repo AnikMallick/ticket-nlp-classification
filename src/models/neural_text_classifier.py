@@ -1,23 +1,31 @@
 import torch
 import torch.nn as nn
 from ..data.datastruct import Batch
+from .base_neural_model import BaseModule
 
-class NeuralTextClassifier(nn.Module):
+class TicketTextClassifierV01(BaseModule):
     def __init__(self, vocab_size: int, embedding_dim: int, pad_id: int, n_classes: int):
         super().__init__()
+        
+        self.hidden_layer1 = 256
         
         self.embedding = nn.Embedding(
             num_embeddings=vocab_size,
             embedding_dim=embedding_dim,
             padding_idx=pad_id
         )
-        self.classifier = nn.Linear(embedding_dim, n_classes)
+        self.classifier = nn.Sequential(
+            nn.Linear(embedding_dim, self.hidden_layer1),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(self.hidden_layer1, n_classes)
+        )
     
-    def forward(self, batch: Batch):
+    def forward(self, inputs, attention_masks):
         # B batch size, T max token_ids for the samples in the batch, D embedding_dim
-        embeddings = self.embedding(batch.input_ids) # shape: [B, T, D]
+        embeddings = self.embedding(inputs) # shape: [B, T, D]
         
-        mask = batch.attention_masks.unsqueeze(-1) # shape: [B, T, 1]
+        mask = attention_masks.unsqueeze(-1) # shape: [B, T, 1]
         masked_embeddings = embeddings * mask # embedding for all the padids go to zero
         
         summed = masked_embeddings.sum(dim=1) # shape: [B, D] summed all the embediings for all the token ids

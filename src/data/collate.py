@@ -1,8 +1,38 @@
+from typing import Optional
 import torch
+from copy import deepcopy
 
 from .datastruct import Sample, Batch
+import random
+from itertools import batched
+from functools import partial
+from .tokenizers.base import BaseTokenizer
 
-def collate_func(samples: list[Sample], pad_id: int) -> Batch:
+
+def create_samples(X: list[str], y: list, tokenizer: BaseTokenizer):
+    samples = []
+    for _X, _y in zip(X, y):
+        samples.append(
+            Sample(
+                input_ids=torch.tensor(tokenizer.encode(_X), dtype=torch.long),
+                label=torch.tensor(_y, dtype=torch.long)
+            )
+        )
+    return samples
+
+def create_batch(batch_size: int, in_samples: list[Sample], pad_id: int, device: Optional[str] = None,
+                 shuffle: bool = False, random_state: int = 42) -> list[Batch]:
+    samples = deepcopy(in_samples)
+    if shuffle:
+        random.seed(random_state)
+        random.shuffle(samples)
+    collate_func_partial = partial(collate_func, pad_id=pad_id, device=device)
+    batchs = [collate_func_partial(samples=list(b_samples)) for b_samples in batched(samples, batch_size)]
+    return batchs
+    
+
+def collate_func(samples: list[Sample], 
+                 pad_id: int, device: Optional[str] = None) -> Batch:
     batch_input_ids = []
     labels = []
     max_length = 0
@@ -28,8 +58,15 @@ def collate_func(samples: list[Sample], pad_id: int) -> Batch:
     # now padded_inputs = actual data + pad_id
     # attention_max = 1.0 for all index where there is actual data + 0.0 for all the padded indexes
     
+    if not device:
+        return Batch(
+            input_ids=padded_inputs,
+            labels=torch.stack(labels),
+            attention_masks=attention_masks
+        )
+    
     return Batch(
-        input_ids=padded_inputs,
-        labels=torch.stack(labels),
-        attention_masks=attention_masks
-    )
+            input_ids=padded_inputs.to(device),
+            labels=torch.stack(labels).to(device),
+            attention_masks=attention_masks.to(device)
+        )

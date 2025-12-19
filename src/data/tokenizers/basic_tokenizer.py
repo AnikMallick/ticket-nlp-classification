@@ -88,3 +88,6 @@ class BasicWordTokenizer(BaseTokenizer):
 
     def __len__(self) -> int:
         return len(self.token_to_id)
+
+    def is_fitted(self) -> bool:
+        return self.fitted

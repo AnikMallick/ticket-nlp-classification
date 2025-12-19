@@ -26,3 +26,6 @@ class BaseTokenizer:
 
     def __len__(self) -> int:
         pass
+
+    def is_fitted(self) -> bool:
+        pass

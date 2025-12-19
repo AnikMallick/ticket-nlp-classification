@@ -216,19 +216,90 @@ Linear SVM performed better among the two models:
 
 ---
 
-## Phase 2 — Neural Model Training (Planned)
+## Phase 2 — Neural Model Training (WIP)
 
-**Objective:** Learn dense semantic representations beyond lexical overlap.
+**Objective:** Evaluate whether a learned neural text encoder improves over TF-IDF baselines and analyze the effect of training duration vs early stopping on class-wise recall and confusion patterns.
 
-Planned approach:
+- Notebook: "notebooks/03_neural_training.ipynb"
 
-* PyTorch-based text classifier
-* Embedding layer → mean pooling → linear classifier
-* CrossEntropyLoss with Adam optimizer
-* Hyperparameter tuning (learning rate, batch size)
-* Training/validation curves and overfitting analysis
+### Model Architecture
 
-This phase evaluates **when neural models justify added complexity** over TF-IDF baselines.
+A lightweight neural classifier was trained from scratch:
+* Tokenizer: Simple word-level tokenizer
+* Vocabulary size: 30,000, With the given data extracted a vocabulary of length: 11608.
+* Embedding dimension: 256 (trainable)
+* Encoder: Mean pooling over token embeddings (mask-aware)
+* Classifier: One hidden-layer MLP (256 units) with ReLU activation and Dropout (0.3)
+* Loss: Cross-Entropy Loss
+* Optimizer: Adam
+
+### Training Setup
+
+| Parameter        | Value                  |
+| ---------------- | ---------------------- |
+| Learning rate    | 0.0001                 |
+| Batch size       | 32                     |
+| Max epochs       | 50                     |
+| Early stopping   | Optional               |
+| Validation split | 20%                    |
+| Stratified split | Yes                    |
+| Label encoding   | `sklearn.LabelEncoder` |
+| Padding length   | 256 tokens             |
+
+**Two training regimes were compared:**
+
+* Fixed training (50 epochs, no early stopping)
+* Early stopping (triggered at epoch 33 based on validation Macro-F1)
+
+### Evaluation Methodology
+
+* Primary metric: Macro-averaged F1
+* Secondary analysis: Row-normalized confusion matrix (recall per class)
+* Rationale:
+   - Dataset is imbalanced
+   - Missed tickets (low recall) are more costly than extra tickets
+
+Row-normalized confusion matrices were used to analyze where recall improves or degrades across training regimes.
+
+### Results — Recall Analysis on hold out test data (Row-Normalized Confusion Matrix)
+
+| Class                 | Epoch(50)           | Early Stopping: Epoch(31) |
+| --------------------- | ------------------- | ---------- |
+| Access                | 87.4%               | **87.8%**  |
+| Administrative rights | 72.7%               | **73.0%**  |
+| HR Support            | 85.3%               | **85.7%**  |
+| Hardware              | **87.2%**           | 86.8%      |
+| Internal Project      | **82.8%**           | 80.2%      |
+| Miscellaneous         | 81.1%               | **81.9%**  |
+| Purchase              | 87.6%               | **88.4%**  |
+| Storage               | **86.6%**           | 86.1%      |
+|                       |                     |            |
+| F1 macro avg          | **0.8507**          | 0.8473     |
+
+**Observations:**
+
+* Administrative rights continues to show significant confusion with Hardware
+* Hardware remains a dominant attractor class due to overlapping vocabulary
+* Early stopping reduces overfitting getting overall better score, while overfitting does put more training on the majority classes.
+
+Consistent confusion patterns observed across both settings:
+
+* Administrative rights ↔ Hardware
+* Internal Project ↔ Hardware/HR Support
+* Miscellaneous ↔ Hardware
+  
+### Key Takeaways
+
+* Neural embeddings do not drastically outperform TF-IDF on recall for this dataset
+* Learned representations help smooth some class boundaries but cannot fully resolve semantic overlap
+* Early stopping improves training efficiency but may slightly hurt overall recall
+* These results motivate Phase 3 (Retrieval-Augmented Classification) to inject contextual grounding
+
+### Artifacts Saved
+
+* Early-stop model: artifacts/neural_model_bt_v01.pt
+* Simple Word tokenizer vocab: artifacts/basic_tokenizer_v01.json
+* Labelencoder: artifacts/labelencoder_neural_v01.pkl
 
 ---
 
