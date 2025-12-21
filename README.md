@@ -84,6 +84,9 @@ The codebase is structured so that **training, evaluation, retrieval, and deploy
 
 **Objective:** Understand data characteristics before modeling.
 
+Notebook:
+- `notebooks/01_data_exploration.ipynb`
+
 Performed analysis includes:
 
 * Number of samples: 47837 and classes: 8.
@@ -123,11 +126,13 @@ This phase informs:
 
 ## Phase 1 — Classical ML Baselines (Completed)
 
-- Notebook: "notebooks/02_tfidf_baselines.ipynb"
 
 ### Objective
 
 Establish strong, interpretable baselines and understand their failure modes.
+
+Notebook:
+- `notebooks/02_tfidf_baselines.ipynb`
 
 ### Text Processing
 
@@ -216,24 +221,46 @@ Linear SVM performed better among the two models:
 
 ---
 
-## Phase 2 — Neural Model Training (WIP)
+## Phase 2 — Neural Model Training (Completed)
 
-**Objective 1:** Evaluate whether a learned neural text encoder improves over TF-IDF baselines and analyze the effect of training duration vs early stopping on class-wise recall and confusion patterns.
+### Objective
 
-- Notebook: "notebooks/03_neural_training.ipynb"
+Evaluate whether a **learned neural text encoder** improves over TF-IDF baselines and analyze the impact of **training duration vs early stopping** on class-wise recall and confusion patterns.
 
-### Model Architecture
+Notebook:
+- `notebooks/03_neural_training.ipynb`
+- `notebooks/04_neural_training_2.ipynb`
 
-A lightweight neural classifier was trained from scratch:
-* Tokenizer: Simple word-level tokenizer
-* Vocabulary size: 30,000, With the given data extracted a vocabulary of length: 11608.
-* Embedding dimension: 256 (trainable)
-* Encoder: Mean pooling over token embeddings (mask-aware)
-* Classifier: One hidden-layer MLP (256 units) with ReLU activation and Dropout (0.3)
-* Loss: Cross-Entropy Loss
-* Optimizer: Adam
+## Model Architecture
 
-### Training Setup
+A lightweight neural text classifier was trained **from scratch** to serve as a minimal but interpretable neural baseline.
+
+### Tokenization Experiments
+
+Multiple tokenization strategies were evaluated:
+
+- Word unigrams  
+- Word bigrams  
+- Word unigrams + bigrams  
+- Character n-grams (3–5)  
+- **Word unigrams + character n-grams (3–5)**
+
+Among these, **Word Unigram + Character n-grams (3–5)** consistently achieved the best overall performance and recall balance.
+
+### Architecture Details
+
+- Vocabulary cap: 30,000  
+  - Actual vocabulary size: **11,608** (Word unigrams) and **30,002** (Word unigrams + character n-grams (3–5))
+- Embedding dimension: **256** (trainable)
+- Encoder: Mean pooling over token embeddings (mask-aware)
+- Classifier:
+  - One hidden-layer MLP (256 units)
+  - ReLU activation
+  - Dropout: 0.3
+- Loss: Cross-Entropy Loss
+- Optimizer: Adam
+
+## Training Setup
 
 | Parameter        | Value                  |
 | ---------------- | ---------------------- |
@@ -246,60 +273,67 @@ A lightweight neural classifier was trained from scratch:
 | Label encoding   | `sklearn.LabelEncoder` |
 | Padding length   | 256 tokens             |
 
-**Two training regimes were compared:**
+Two training regimes were compared:
 
-* Fixed training (50 epochs, no early stopping)
-* Early stopping (triggered at epoch 31 based on validation Macro-F1)
+- **Fixed training**: 50 epochs (no early stopping).
+- **Early stopping**: Early stopping on validation Macro-F1 with delta `1e-4` and `patience=3`
 
-### Evaluation Methodology
+## Evaluation Methodology
 
-* Primary metric: Macro-averaged F1
-* Secondary analysis: Row-normalized confusion matrix (recall per class)
-* Rationale:
-   - Dataset is imbalanced
-   - Missed tickets (low recall) are more costly than extra tickets
+- **Primary metric**: Macro-averaged F1  
+- **Secondary analysis**: Row-normalized confusion matrix (per-class recall)
 
-Row-normalized confusion matrices were used to analyze where recall improves or degrades across training regimes.
+**Rationale**
 
-### Results — Recall Analysis on hold out test data (Row-Normalized Confusion Matrix)
+- Dataset is class-imbalanced
+- Missed tickets (low recall) are more costly than extra tickets routed to a queue
+- Row-normalized confusion matrices allow direct inspection of recall failures
 
-| Class                 | Epoch(50)           | Early Stopping: Epoch(31) |
-| --------------------- | ------------------- | ---------- |
-| Access                | 87.4%               | **87.8%**  |
-| Administrative rights | 72.7%               | **73.0%**  |
-| HR Support            | 85.3%               | **85.7%**  |
-| Hardware              | **87.2%**           | 86.8%      |
-| Internal Project      | **82.8%**           | 80.2%      |
-| Miscellaneous         | 81.1%               | **81.9%**  |
-| Purchase              | 87.6%               | **88.4%**  |
-| Storage               | **86.6%**           | 86.1%      |
-|                       |                     |            |
-| F1 macro avg          | **0.8507**          | 0.8473     |
+## Results — Recall Analysis (Hold-out Test Set)
 
-**Observations:**
+**Row-normalized confusion matrix (recall per class)**
 
-* Administrative rights continues to show significant confusion with Hardware
-* Hardware remains a dominant attractor class due to overlapping vocabulary
-* Early stopping reduces overfitting getting overall better score, while overfitting does put more training on the majority classes.
+| Class                 | Word Unigram<br>Epoch (50) | Word Unigram<br>Early Stopping (32) | Word Unigram + Char (3–5) |
+| --------------------- | -------------------------- | ---------------------------------- | ------------------------- |
+| Access                | 87.4%                      | 87.8%                               | **88.8%**                 |
+| Administrative rights | 72.7%                      | 73.0%                               | **74.7%**                 |
+| HR Support            | 85.3%                      | **85.7%**                           | 84.2%                     |
+| Hardware              | **87.2%**                  | 86.8%                               | 87.0%                     |
+| Internal Project      | **82.8%**                  | 80.2%                               | 81.4%                     |
+| Miscellaneous         | 81.1%                      | 81.9%                               | **82.2%**                 |
+| Purchase              | 87.6%                      | **88.4%**                           | 88.0%                     |
+| Storage               | 86.6%                      | 86.1%                               | **88.5%**                 |
+|                       |                            |                                     |                           |
+| **Macro F1**          | 0.8507                     | 0.8473                              | **0.8539**                |
 
-Consistent confusion patterns observed across both settings:
+## Observations
 
-* Administrative rights ↔ Hardware
-* Internal Project ↔ Hardware/HR Support
-* Miscellaneous ↔ Hardware
-  
-### Key Takeaways
+- **Administrative rights** remains highly confused with **Hardware**, consistent with TF-IDF baselines
+- **Hardware** acts as a dominant attractor class due to overlapping vocabulary and class frequency
+- Character n-gram augmentation improves recall for several minority classes
+- Early stopping reduces overfitting and improves training efficiency, with minor recall trade-offs
 
-* Neural embeddings do not drastically outperform TF-IDF on recall for this dataset
-* Learned representations help smooth some class boundaries but cannot fully resolve semantic overlap
-* Early stopping improves training efficiency but may slightly hurt overall recall
-* These results motivate Phase 3 (Retrieval-Augmented Classification) to inject contextual grounding
+**Consistent confusion patterns across neural settings**
+
+- Administrative rights ↔ Hardware  
+- Internal Project ↔ Hardware / HR Support  
+- Miscellaneous ↔ Hardware  
+
+## Key Takeaways
+
+- Neural embeddings do **not drastically outperform TF-IDF** for recall on this dataset
+- Learned representations slightly smooth class boundaries but cannot fully resolve semantic overlap
+- Early stopping acts primarily as a regularizer
+- Character n-grams provide modest but consistent gains for ambiguous and minority classes
+- These results motivate **Phase 3 — Retrieval-Augmented Classification**
 
 ### Artifacts Saved
 
-* Early-stop model: artifacts/neural_model_bt_v01.pt
-* Simple Word tokenizer vocab: artifacts/basic_tokenizer_v01.json
-* Labelencoder: artifacts/labelencoder_neural_v01.pkl
+* Early-stop model (Word Unigram): **artifacts/neural_model_btuni_v01.pt**
+* Early-stop model (Word Unigram + Char (3–5)): **artifacts/neural_model_unicar3-5_v01.pt**
+* Word Unigram tokenizer vocab: **artifacts/basic_tokenizer_uni_v01.json**
+* Word Unigram + Char (3–5) tokenizer vocab: **artifacts/custom_tokenizer_unicar3-5_v01.json**
+* Labelencoder: **artifacts/labelencoder_neural_v01.pkl**
 
 ---
 

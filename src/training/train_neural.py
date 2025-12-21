@@ -69,7 +69,7 @@ def train_model(model: BaseModule, total_epochs:int, train_samples: list[Sample]
         """)
         history.append((train_loss, test_loss, train_f1, test_f1))
         if early_stop and early_stop_obj.check(test_f1):
-            print(f"Early stopping at epoch: {epoch}")
+            print(f"Early stopping at epoch: {epoch + 1}")
             return history
         
     return history
