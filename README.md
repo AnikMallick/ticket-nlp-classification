@@ -335,6 +335,10 @@ Two training regimes were compared:
 * Word Unigram + Char (3–5) tokenizer vocab: **artifacts/custom_tokenizer_unicar3-5_v01.json**
 * Labelencoder: **artifacts/labelencoder_neural_v01.pkl**
 
+## Phase 2 vs Phase 1 — Neural Model vs TF-IDF Baseline
+
+Compared to the Phase 1 TF-IDF baseline, the neural encoder does **not deliver a step-change improvement in macro recall or F1**, despite increased modeling capacity and training cost. TF-IDF remains highly competitive on this dataset due to its strong lexical alignment with ticket language and class labels. The neural model shows **slightly smoother decision boundaries**, particularly when augmented with character n-grams, improving recall for some minority and noisy classes (e.g., *Administrative rights*, *Storage*). However, persistent confusion between semantically overlapping classes (e.g., *Hardware* vs *Administrative rights*) remains largely unchanged, indicating that **representation learning alone is insufficient** to resolve ambiguity inherent in short, underspecified ticket text.
+
 ---
 
 ## Phase 3 — Retrieval-Augmented Classification (Planned)
