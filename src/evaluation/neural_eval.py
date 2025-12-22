@@ -29,6 +29,31 @@ def evaluate(model: BaseModule,
     return total_loss / batch_count, y_pred, y_true
 
 @torch.no_grad()
+def evaluate_cuda(model: BaseModule, 
+             batches: list[Batch],
+             criterion: torch.nn.CrossEntropyLoss):
+    model.eval()
+    
+    y_pred = [] # ignore: Type
+    y_true = [] # ignore: Type
+    total_loss = 0
+    batch_count = 0
+    for btach in batches:
+        logits = model(btach.input_ids.to("cuda"), btach.attention_masks.to("cuda"))
+        loss = criterion(logits, btach.labels.to("cuda"))
+        
+        total_loss += loss.item()
+        batch_count += 1
+
+        y_pred.extend(logits.argmax(1).cpu().numpy())
+        y_true.extend(btach.labels.cpu().numpy())
+                
+        btach.input_ids.to("cpu")
+        btach.attention_masks.to("cpu")
+        btach.labels.to("cpu")
+    return total_loss / batch_count, y_pred, y_true
+
+@torch.no_grad()
 def inference_one(text: str, model: BaseModule , tokenizer: BaseTokenizer, classes: list[str],
                   device: str):
     model.eval()
