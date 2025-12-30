@@ -414,9 +414,9 @@ The following diagram illustrates the retrieval-augmented classification pipelin
              │
              ▼
 ┌─────────────────────────┐
-│ Tokenization Layer     │
-│ • Word Unigram         │
-│ • Word + Char (3,5)    │
+│ Tokenization Layer      │
+│ • Word Unigram          │
+│ • Word + Char (3,5)     │
 └────────────┬────────────┘
              │
              ▼
