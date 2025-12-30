@@ -80,8 +80,6 @@ The codebase is structured so that **training, evaluation, retrieval, and deploy
 
 ## Phase 0 — Data Understanding
 
-- Notebook: "notebooks/01_data_exploration.ipynb"
-
 **Objective:** Understand data characteristics before modeling.
 
 Notebook:
@@ -125,7 +123,6 @@ This phase informs:
 ---
 
 ## Phase 1 — Classical ML Baselines (Completed)
-
 
 ### Objective
 
@@ -341,23 +338,254 @@ Compared to the Phase 1 TF-IDF baseline, the neural encoder does **not deliver a
 
 ---
 
-## Phase 3 — Retrieval-Augmented Classification (Planned)
+## Phase 3 — Retrieval-Augmented Classification (RAC)
 
-**Objective:** Measure the impact of retrieval on classification accuracy.
+### Objective
 
-Planned steps:
+Evaluate whether **injecting semantically similar historical tickets as additional context**
+improves neural classification performance.
 
-* Build vector index (TF-IDF or learned embeddings)
-* Retrieve top-k similar historical tickets
-* Inject retrieved context into prediction pipeline
+This phase explicitly tests a realistic production hypothesis:
 
-Evaluation includes:
+> “If we retrieve relevant past tickets and append them as context, the classifier should perform better.”
 
-* Performance with vs without retrieval
-* Error types retrieval fixes
-* Error types retrieval introduces
+The goal is not just performance gains, but to **measure when retrieval helps vs hurts**.
 
-An **ablation study** is included to explicitly measure retrieval impact.
+Notebook:
+- `notebooks/05_retrieval_augmented_classification.ipynb`
+- `notebooks/06_retrieval_augmented_classification_2.ipynb`
+- `notebooks/07_retrieval_augmented_classification_3.ipynb`
+
+### Retrieval Pipeline
+
+A semantic retrieval pipeline was built using **pretrained sentence embeddings**.
+
+#### Embedding Model
+- Model: `sentence-transformers/all-MiniLM-L6-v2`
+- Embedding type: Dense sentence embeddings
+- Used only for retrieval (not fine-tuned)
+
+#### Vector Index
+- Library: FAISS
+- Index types evaluated:
+  - Cosine similarity
+  - Euclidean distance
+- Observation: Both indices produced nearly identical nearest neighbors
+
+Based on this, **cosine similarity** was used for all experiments.
+
+### Data Augmentation Strategy
+
+For each ticket (train and test):
+
+1. Generate sentence embedding
+2. Retrieve top-`k` similar tickets from **training set**
+3. Append retrieved documents as context: <original ticket text> [CONTEXT] <retrieved ticket 1> ... <retrieved ticket k>
+
+### Retrieval-Augmented Data Flow
+
+The following diagram illustrates the retrieval-augmented classification pipeline used in this phase:
+
+┌──────────────┐
+│ Ticket Text  │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────────────────┐
+│ Sentence Transformer     │
+│ (MiniLM-L6-v2 Embedding) │
+└──────┬───────────────────┘
+       │
+       ▼
+┌──────────────────────────┐
+│ FAISS Vector Index       │
+│ (Cosine / Euclidean)     │
+└──────┬───────────────────┘
+       │ Top-k Documents
+       ▼
+┌──────────────────────────┐
+│ Context Augmentation     │
+│ Original + Retrieved     │
+└──────┬───────────────────┘
+       │
+       ▼
+┌──────────────────────────┐
+│ Tokenizer                │
+│ (Word / Char n-grams)    │
+└──────┬───────────────────┘
+       │
+       ▼
+┌──────────────────────────┐
+│ Neural Classifier        │
+│ (Embedding → MLP)        │
+└──────────┬───────────────┘
+           │
+           ▼
+     Predicted Topic
+
+#### Important Design Choices
+
+- `k = 5` for test data
+- For training data:
+  - `k = 6` retrieved
+  - Top result (self-match) removed
+  - Final effective context size = 5
+- **Only document text was retrieved**
+  - Labels were NOT injected
+  - Prevents label leakage
+- Both **training and test data** were augmented
+
+This setup mirrors real-world RAC systems without oracle access.
+
+### Classification Model (Reused from Phase 2)
+
+The same neural architecture from Phase 2 was reused to isolate the effect of retrieval.
+
+**Architecture:**
+- Trainable embedding layer
+- Mean pooling encoder
+- Classifier:
+  - Linear (256) → ReLU → Dropout (0.3) → Linear (num classes)
+- Loss: Cross-Entropy
+- Optimizer: Adam
+
+**Tokenization Experiments:**
+1. Word Unigram
+2. Word Unigram + Character n-grams (3–5)
+
+### Engineering Constraints & Optimization Challenges
+
+The Word + Char (3–5) tokenizer significantly increased sequence length.
+
+Hardware constraint:
+- GPU: GTX 1660 Super (6GB VRAM)
+
+Mitigation strategy:
+- Model kept on GPU
+- Input batches dynamically moved:
+  - CPU → GPU (forward + backward)
+  - GPU → CPU (after step)
+- Enabled training completion but increased wall-clock time
+
+This reflects real-world tradeoffs between model complexity and infrastructure.
+
+### Results — Retrieval-Augmented Neural Models
+
+#### Observed Outcome
+
+Despite correct retrieval, **retrieval-augmented training degraded performance**:
+
+- Validation Macro-F1 plateaued around **0.50–0.52**
+- Training slowed significantly
+- Confusion increased across nearly all classes
+
+#### Row-Normalized Confusion Matrix (Recall)
+
+Performance collapsed relative to Phase 2, with strong confusion toward dominant classes (Hardware, Miscellaneous).
+
+Key failure patterns:
+- Administrative rights ↔ Hardware
+- Internal Project ↔ Hardware / HR Support
+- Miscellaneous ↔ Hardware
+
+This degradation was observed for:
+- Word Unigram
+- Word Unigram + Char (3–5)
+
+### Retrieval Quality Verification (Sanity Check)
+
+To ensure retrieval itself was not the issue, a **retrieval-only baseline** was evaluated:
+
+#### Method
+- Retrieve top-10 similar training tickets
+- Predict label via majority vote
+- Tested with:
+  - Cosine similarity index
+  - Euclidean distance index
+
+#### Observation
+- Both indices produced nearly identical confusion matrices
+- Retrieval-only voting achieved **reasonable recall** across most classes
+- Confirms:
+  - Vector DB is correct
+  - Nearest neighbors are semantically meaningful
+
+This isolates the failure to **retrieval + neural encoder interaction**, not retrieval quality.
+
+### Retrieval-Only vs RAC vs Phase 2 — Comparative Analysis
+
+A clear contrast emerges when comparing **retrieval-only voting**, **retrieval-augmented classification (RAC)**, and the **Phase 2 neural classifier**.
+
+Retrieval-only voting using semantic neighbors performs reasonably well because it preserves label locality and avoids representation collapse. Phase 2’s neural classifier, trained solely on the original ticket text, achieves the strongest overall Macro-F1 by learning stable class boundaries without external noise. In contrast, retrieval-augmented classification degrades performance because retrieved context is injected without any mechanism to model relevance, leading to semantic dilution and optimization instability. This demonstrates that retrieval is most effective either as a **decision-level signal (voting / reranking)** or when paired with architectures explicitly designed to reason over retrieved evidence, rather than naively concatenated into the input.
+
+### Analysis — Why Retrieval Hurt Performance
+
+The failure is architectural, not algorithmic.
+
+1. **Naïve context concatenation**
+   - Retrieved tickets often contain mixed or conflicting intents
+   - No distinction between query and context tokens
+
+2. **Mean pooling has no selectivity**
+   - All tokens contribute equally
+   - Retrieved context dominates representation
+
+3. **Sequence length explosion**
+   - Signal from original ticket diluted
+   - Optimization becomes unstable
+
+4. **Model capacity mismatch**
+   - Shallow MLP cannot reason over multi-document context
+   - No attention, gating, or relevance weighting
+
+### Key Takeaways
+
+- Retrieval correctness ≠ retrieval usefulness
+- Naïve RAC can significantly degrade performance
+- Neural encoders must be **retrieval-aware**, not retrieval-blind
+- TF-IDF + SVM remains a surprisingly strong baseline
+- This mirrors real-world RAG failures in production systems
+
+### Artifacts
+
+The following artifacts were persisted for reproducibility and analysis:
+
+- **Sentence Transformer (Embedding Model):**  
+  Not saved separately. The model (`sentence-transformers/all-MiniLM-L6-v2`) was used strictly as a frozen feature extractor with no fine-tuning. Reproducibility is ensured by recording the model name and version.
+
+- **FAISS Vector Indexes:**  
+  Saved for semantic retrieval during experimentation and analysis. Both cosine similarity and Euclidean distance indexes were evaluated and produced comparable results.
+  Artifacts: **artifacts/traindata_similarity_index_v01.index**, **artifacts/traindata_euclidian_index_v01.index**
+
+- **Training Corpus & Labels:**  
+  Persisted to maintain alignment between:
+  - FAISS index positions
+  - Training text samples
+  - Ground-truth labels  
+  Artifacts: **artifacts/rac_corpus_similarity-euclidian_index_v01.json**
+
+  This ensures correct label mapping during retrieval, voting, and sanity checks.
+
+- **Retrieval-augmented datasets:** 
+  For ease of experimentation the augmented data was saved
+  **data/processed/agumented_ticketdata_similarity_v01.json**, **data/processed/agumented_ticketdata_euclidian_v01.json**
+
+- **Neural RAC Models (Experimental):**  
+  Not saved. Retrieval-augmented neural classifiers showed degraded performance compared to Phase 2 baselines, and therefore were not retained as deployable artifacts.
+
+- **Evaluation Outputs:**  
+  Confusion matrices and classification reports were saved for all retrieval strategies to support comparative analysis in our notebooks.
+
+### Transition to Next Phase
+
+Phase 3 demonstrates that **retrieval must be integrated thoughtfully**.
+
+Potential next directions:
+- Late fusion (separate encoding of query and context)
+- Attention over retrieved documents
+- Retrieval-based re-ranking instead of concatenation
+
+These insights motivate Phase 4: **Error Analysis & Failure Attribution**.
 
 ---
 
