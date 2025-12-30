@@ -520,6 +520,21 @@ To ensure retrieval itself was not the issue, a **retrieval-only baseline** was 
 
 This isolates the failure to **retrieval + neural encoder interaction**, not retrieval quality.
 
+#### Results — Recall Analysis (Hold-out Test Set)
+
+| Class                 | Retrieval-only baseline    |
+| --------------------- | -------------------------- |
+| Access                | 85.9%                      |
+| Administrative rights | 68.5%                      |
+| HR Support            | 87.3%                      |
+| Hardware              | 83.7%                      |
+| Internal Project      | 75.2%                      |
+| Miscellaneous         | 77.5%                      |
+| Purchase              | 90.3%                      |
+| Storage               | 84.1%                      |
+|                       |                            |
+| **Macro F1**          | 0.8299                     |
+
 ### Retrieval-Only vs RAC vs Phase 2 — Comparative Analysis
 
 A clear contrast emerges when comparing **retrieval-only voting**, **retrieval-augmented classification (RAC)**, and the **Phase 2 neural classifier**.
