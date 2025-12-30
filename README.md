@@ -386,42 +386,50 @@ For each ticket (train and test):
 
 The following diagram illustrates the retrieval-augmented classification pipeline used in this phase:
 
-┌──────────────┐
-│ Ticket Text  │
-└──────┬───────┘
-       │
-       ▼
-┌──────────────────────────┐
-│ Sentence Transformer     │
-│ (MiniLM-L6-v2 Embedding) │
-└──────┬───────────────────┘
-       │
-       ▼
-┌──────────────────────────┐
-│ FAISS Vector Index       │
-│ (Cosine / Euclidean)     │
-└──────┬───────────────────┘
-       │ Top-k Documents
-       ▼
-┌──────────────────────────┐
-│ Context Augmentation     │
-│ Original + Retrieved     │
-└──────┬───────────────────┘
-       │
-       ▼
-┌──────────────────────────┐
-│ Tokenizer                │
-│ (Word / Char n-grams)    │
-└──────┬───────────────────┘
-       │
-       ▼
-┌──────────────────────────┐
-│ Neural Classifier        │
-│ (Embedding → MLP)        │
-└──────────┬───────────────┘
-           │
-           ▼
-     Predicted Topic
+```
+┌─────────────────────────┐
+│   Input Ticket Text     │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Sentence Transformer    │
+│ (MiniLM-L6-v2, frozen)  │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│     FAISS Vector DB     │
+│  (Cosine / Euclidean)   │
+└────────────┬────────────┘
+             │
+     Top-K Retrieved Docs
+             │
+             ▼
+┌─────────────────────────┐
+│ Context Augmentation    │
+│ [Query + Retrieved      │
+│  Documents]             │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Tokenization Layer     │
+│ • Word Unigram         │
+│ • Word + Char (3,5)    │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Neural Classifier       │
+│ (Same as Phase 1)       │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Predicted Class Label   │
+└─────────────────────────┘
+```
 
 #### Important Design Choices
 
