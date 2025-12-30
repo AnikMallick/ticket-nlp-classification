@@ -338,7 +338,7 @@ Compared to the Phase 1 TF-IDF baseline, the neural encoder does **not deliver a
 
 ---
 
-## Phase 3 — Retrieval-Augmented Classification (RAC)
+## Phase 3 — Retrieval-Augmented Classification (RAC) (Completed)
 
 ### Objective
 
