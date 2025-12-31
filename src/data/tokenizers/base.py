@@ -41,6 +41,7 @@ class BaseTokenizer(ABC):
     def load_vocab(self, vocab: dict[str, int]) -> None:
         if self.fitted:
             raise RuntimeError("Tokenizer already fitted.")
+        self.fitted = True
         if len(vocab) > self.max_vocab_size + 2:
             raise ValueError("Given vocab size gratter than allowed size.")
         
