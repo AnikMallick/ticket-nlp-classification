@@ -1,3 +1,4 @@
+from numpy import ndarray
 from sentence_transformers import SentenceTransformer
 import faiss
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -14,6 +15,29 @@ def retrive_related(retrieval_model: SentenceTransformer,
     
     _emb = retrieval_model.encode([text], normalize_embeddings=True).astype("float32")
     _related_scores, _related_indexes = index.search(_emb, top_k)
+    
+    retrieved = []
+    for _index, score in zip(_related_indexes[0], _related_scores[0]):
+        if remove_top and index == 0:
+            continue
+        
+        _data = {
+            key: corpus[key][_index] for key in keys
+        }
+        _data["score"] = score
+        retrieved.append(_data)
+    return retrieved
+
+def retrive_related_embedding(index: faiss.Index,
+                    embedding: ndarray,
+                    corpus: dict,
+                    keys: tuple[str], 
+                    k: int = 5,
+                    remove_top: bool = False) -> list[dict]:
+    top_k = k if not remove_top else k+1
+    
+    # _emb = retrieval_model.encode([text], normalize_embeddings=True).astype("float32")
+    _related_scores, _related_indexes = index.search(embedding, top_k)
     
     retrieved = []
     for _index, score in zip(_related_indexes[0], _related_scores[0]):

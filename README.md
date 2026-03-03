@@ -157,6 +157,11 @@ Notebook:
    * Strong baseline for sparse text features
    * Trained model: artifacts/svm_model_v01.pkl
 
+3. **XGBOOST**
+
+   * Margin-based classifier
+   * Trained model: artifacts/xgboost_v01.pkl
+
 ### Evaluation Metrics
 
 * Macro Precision
@@ -174,19 +179,20 @@ Macro metrics are emphasized due to **class imbalance**.
 | ---------------------------- | --------------- | ------------ | -------- |
 | TF-IDF + Logistic Regression | 0.8993          | 0.8141       | 0.8478   |
 | TF-IDF + Linear SVM          | 0.8772          | 0.8441       | 0.8594   |
+| TF-IDF + XGBOOST             | 0.8794          | 0.8429       | 0.8595   |
 
 #### Per-Class Recall Comparison
 
-| Class                 | Logistic Regression | Linear SVM |
-| --------------------- | ------------------- | ---------- |
-| Access                | 85.8%               | **87.4%**  |
-| Administrative rights | 61.3%               | **70.5%**  |
-| HR Support            | **86.9%**           | 86.4%      |
-| Hardware              | **91.5%**           | 88.5%      |
-| Internal Project      | 77.1%               | **83.7%**  |
-| Miscellaneous         | 82.4%               | **83.3%**  |
-| Purchase              | 84.8%               | **87.4%**  |
-| Storage               | 81.4%               | **87.9%**  |
+| Class                 | Logistic Regression | Linear SVM | XGBOOST    |
+| --------------------- | ------------------- | ---------- | ---------- |
+| Access                | 85.8%               | 87.4%      | **89.9%**  |
+| Administrative rights | 61.3%               | 70.5%      | **71.6%**  |
+| HR Support            | **86.9%**           | 86.4%      | 84.6%      |
+| Hardware              | **91.5%**           | 88.5%      | 88.8%      |
+| Internal Project      | 77.1%               | 83.7%      | **84.0%**  |
+| Miscellaneous         | 82.4%               | **83.3%**  | 80.0%      |
+| Purchase              | 84.8%               | 87.4%      | **87.8%**  |
+| Storage               | 81.4%               | **87.9%**  | 87.6%      |
 
 Key observations:
 - Administrative rights tickets are frequently misclassified as Hardware
